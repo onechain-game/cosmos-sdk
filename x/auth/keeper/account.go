@@ -106,3 +106,47 @@ func (ak AccountKeeper) IterateAccounts(ctx sdk.Context, cb func(account types.A
 		}
 	}
 }
+
+// HasCitizen implements AccountKeeperI.
+func (ak AccountKeeper) HasCitizen(ctx sdk.Context, citzenId string) bool {
+	store := ctx.KVStore(ak.storeKey)
+	return store.Has(types.CitizenStoreKey(citzenId))
+}
+
+// GetCitizenFromBench32 implements AccountKeeperI.
+func (ak AccountKeeper) GetCitizenFromBench32(ctx sdk.Context, address string) (types.Citizen, bool) {
+	accAddress, _ := sdk.AccAddressFromBech32(address)
+	account := ak.GetAccount(ctx, accAddress)
+	if account == nil {
+		return types.Citizen{}, false
+	}
+	return ak.GetCitizen(ctx, account.GetCitizen())
+}
+
+// GetCitizen implements AccountKeeperI.
+func (ak AccountKeeper) GetCitizen(ctx sdk.Context, citizenId string) (types.Citizen, bool) {
+	store := ctx.KVStore(ak.storeKey)
+	bz := store.Get(types.CitizenStoreKey(citizenId))
+	if bz == nil {
+		return types.Citizen{}, false
+	}
+	var citizenValue types.Citizen
+	err := ak.cdc.Unmarshal(bz, &citizenValue)
+	if err != nil {
+		panic(err)
+	}
+
+	return citizenValue, true
+}
+
+// SetCitizen implements AccountKeeperI.
+func (ak AccountKeeper) SetCitizen(ctx sdk.Context, citizenValue types.Citizen) {
+	store := ctx.KVStore(ak.storeKey)
+
+	bz, err := ak.cdc.MarshalInterface(&citizenValue)
+	if err != nil {
+		panic(err)
+	}
+
+	store.Set(types.CitizenStoreKey(citizenValue.GetCitizenID()), bz)
+}

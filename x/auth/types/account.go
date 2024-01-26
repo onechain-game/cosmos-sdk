@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/cosmos/cosmos-sdk/types/citizen"
 	"strings"
 
 	"github.com/cometbft/cometbft/crypto"
@@ -25,6 +26,7 @@ var (
 	_ codectypes.UnpackInterfacesMessage = (*BaseAccount)(nil)
 	_ GenesisAccount                     = (*ModuleAccount)(nil)
 	_ ModuleAccountI                     = (*ModuleAccount)(nil)
+	_ citizen.CitizenI                   = (*Citizen)(nil)
 )
 
 // NewBaseAccount creates a new BaseAccount object
@@ -36,7 +38,6 @@ func NewBaseAccount(address sdk.AccAddress, pubKey cryptotypes.PubKey, accountNu
 		AccountNumber: accountNumber,
 		Sequence:      sequence,
 	}
-
 	err := acc.SetPubKey(pubKey)
 	if err != nil {
 		panic(err)
@@ -56,6 +57,20 @@ func NewBaseAccountWithAddress(addr sdk.AccAddress) *BaseAccount {
 	return &BaseAccount{
 		Address: addr.String(),
 	}
+}
+
+// GetCitizen - Implements sdk.AccountI.
+func (acc BaseAccount) GetCitizen() string {
+	return acc.CitizenId
+}
+
+// SetCitizen - Implements sdk.AccountI.
+func (acc *BaseAccount) SetCitizen(citizen *Citizen) error {
+	if len(acc.CitizenId) != 0 && citizen != nil {
+		return errors.New("cannot override BaseAccount Citizen")
+	}
+	acc.CitizenId = citizen.CitizenId
+	return nil
 }
 
 // GetAddress - Implements sdk.AccountI.
@@ -309,6 +324,38 @@ func (ma *ModuleAccount) UnmarshalJSON(bz []byte) error {
 	return nil
 }
 
+func (citizen Citizen) GetCitizenID() string {
+	return citizen.CitizenId
+}
+func (citizen *Citizen) SetCitizenID(id string) error {
+	if len(citizen.CitizenId) != 0 {
+		return errors.New("cannot override Citizen ID")
+	}
+	citizen.CitizenId = id
+	return nil
+}
+func (citizen Citizen) GetCitizenName() string {
+	return citizen.CitizenName
+}
+func (citizen *Citizen) SetCitizenName(name string) error {
+	citizen.CitizenName = name
+	return nil
+}
+func (citizen Citizen) GetEthAddress() string {
+	return citizen.EthAddress
+}
+func (citizen *Citizen) SetEthAddress(addr string) error {
+	citizen.EthAddress = addr
+	return nil
+}
+func (citizen Citizen) GetAP() uint64 {
+	return citizen.Ap
+}
+func (citizen *Citizen) SetAP(ap uint64) error {
+	citizen.Ap = ap
+	return nil
+}
+
 // AccountI is an interface used to store coins at a given address within state.
 // It presumes a notion of sequence numbers for replay protection,
 // a notion of account numbers for replay protection for previously pruned accounts,
@@ -329,6 +376,9 @@ type AccountI interface {
 
 	GetSequence() uint64
 	SetSequence(uint64) error
+
+	GetCitizen() string
+	SetCitizen(*Citizen) error
 
 	// Ensure that account implements stringer
 	String() string
