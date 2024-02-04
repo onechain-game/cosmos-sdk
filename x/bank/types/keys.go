@@ -35,6 +35,8 @@ var (
 
 	// ParamsKey is the prefix for x/bank parameters
 	ParamsKey = []byte{0x05}
+
+	APPoolKey = []byte{0x06}
 )
 
 // AddressAndDenomFromBalancesStore returns an account address and denom from a balances prefix

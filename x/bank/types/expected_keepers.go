@@ -26,4 +26,7 @@ type AccountKeeper interface {
 	GetModuleAccount(ctx sdk.Context, moduleName string) types.ModuleAccountI
 	SetModuleAccount(ctx sdk.Context, macc types.ModuleAccountI)
 	GetModulePermissions() map[string]types.PermissionsForAddress
+	GetCitizen(ctx sdk.Context, citizenId string) (types.Citizen, bool)
+	SetCitizen(ctx sdk.Context, citizenValue types.Citizen)
+	HasCitizen(ctx sdk.Context, citzenId string) bool
 }

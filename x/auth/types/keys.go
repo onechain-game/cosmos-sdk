@@ -27,11 +27,17 @@ var (
 
 	// AccountNumberStoreKeyPrefix prefix for account-by-id store
 	AccountNumberStoreKeyPrefix = []byte("accountNumber")
+
+	// CitizenStoreKeyPrefix prefix for citizenId-by-citizen store
+	CitizenStoreKeyPrefix = []byte{0x02}
 )
 
 // AddressStoreKey turn an address to key used to get it from the account store
 func AddressStoreKey(addr sdk.AccAddress) []byte {
 	return append(AddressStoreKeyPrefix, addr.Bytes()...)
+}
+func CitizenStoreKey(citizenId string) []byte {
+	return append(AddressStoreKeyPrefix, []byte(citizenId)...)
 }
 
 // AccountNumberStoreKey turn an account number to key used to get the account address from account store

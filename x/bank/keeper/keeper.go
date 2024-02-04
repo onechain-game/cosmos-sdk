@@ -1,6 +1,8 @@
 package keeper
 
 import (
+	"encoding/binary"
+	"errors"
 	"fmt"
 
 	"cosmossdk.io/math"
@@ -46,6 +48,9 @@ type Keeper interface {
 
 	DelegateCoins(ctx sdk.Context, delegatorAddr, moduleAccAddr sdk.AccAddress, amt sdk.Coins) error
 	UndelegateCoins(ctx sdk.Context, moduleAccAddr, delegatorAddr sdk.AccAddress, amt sdk.Coins) error
+
+	SendApFromAccountToPool(ctx sdk.Context, addr sdk.AccAddress, amt uint64) error
+	SendApFromPoolToAccount(ctx sdk.Context, addr sdk.AccAddress, amt uint64) error
 
 	types.QueryServer
 }
@@ -546,4 +551,81 @@ func (k BaseViewKeeper) IterateTotalSupply(ctx sdk.Context, cb func(sdk.Coin) bo
 			break
 		}
 	}
+}
+
+// setApPool sets the ap for the pool
+func (k BaseKeeper) SetApPool(ctx sdk.Context, ap uint64) {
+	store := ctx.KVStore(k.storeKey)
+	supplyStore := prefix.NewStore(store, types.APPoolKey)
+
+	// Bank invariants and IBC requires to remove zero coins.
+	if ap != 0 {
+		bz := make([]byte, 8)
+		binary.BigEndian.PutUint64(bz, ap)
+		supplyStore.Set(types.APPoolKey, bz)
+	}
+}
+
+// GetPoolAp retrieves the pool ap from store
+func (k BaseKeeper) GetPoolAp(ctx sdk.Context) uint64 {
+	store := ctx.KVStore(k.storeKey)
+	supplyStore := prefix.NewStore(store, types.APPoolKey)
+
+	bz := supplyStore.Get(types.APPoolKey)
+	if bz == nil {
+		return 0
+	}
+	return binary.BigEndian.Uint64(bz)
+}
+
+func (k BaseKeeper) SendApFromAccountToPool(ctx sdk.Context, addr sdk.AccAddress, amt uint64) error {
+	account := k.ak.GetAccount(ctx, addr)
+	if account == nil {
+		return errors.New("account not exist")
+	}
+	citizenId := account.GetCitizen()
+	if len(citizenId) == 0 {
+		return errors.New("citizen is nil")
+	}
+	citizen, found := k.ak.GetCitizen(ctx, citizenId)
+	if !found {
+		return errors.New("citizen not exist")
+	}
+	apCitizen := citizen.GetAP()
+	if apCitizen < amt {
+		return errors.New("balance not enough")
+	}
+	err := citizen.SetAP(apCitizen - amt)
+	if err != nil {
+		return err
+	}
+	ap := k.GetPoolAp(ctx)
+	k.SetApPool(ctx, ap+amt)
+	return nil
+}
+
+func (k BaseKeeper) SendApFromPoolToAccount(ctx sdk.Context, addr sdk.AccAddress, amt uint64) error {
+	account := k.ak.GetAccount(ctx, addr)
+	if account == nil {
+		return errors.New("account not exist")
+	}
+	citizenId := account.GetCitizen()
+	if len(citizenId) == 0 {
+		return errors.New("citizen is nil")
+	}
+	citizen, found := k.ak.GetCitizen(ctx, citizenId)
+	if !found {
+		return errors.New("citizen not exist")
+	}
+	ap := k.GetPoolAp(ctx)
+	if ap < amt {
+		return errors.New("balance not enough")
+	}
+	k.SetApPool(ctx, ap-amt)
+	apCitizen := citizen.GetAP()
+	err := citizen.SetAP(apCitizen + amt)
+	if err != nil {
+		return err
+	}
+	return nil
 }
